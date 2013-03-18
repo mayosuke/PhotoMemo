@@ -6,10 +6,13 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
+import android.view.View;
+import android.widget.ImageView;
 
 public class MainActivity extends Activity {
     private static final int CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE = 100;
     private static final String TAG = "PhotoMemo";
+    private ImageView mImageView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -17,11 +20,19 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mImageView = (ImageView) findViewById(R.id.image);
+
         // create Intent to take a picture and return control to the calling application
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
         // start the image capture Intent
         startActivityForResult(intent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE);
+    }
+
+    @Override
+    protected void onResume() {
+        Log.d(TAG, "onCreate");
+        super.onResume();
     }
 
     @Override
@@ -37,6 +48,8 @@ public class MainActivity extends Activity {
         Log.d(TAG, "onActivityForResult:requestCode=" + requestCode + ",result=" + result + ",data=" + data);
         if (data != null) {
             Log.d(TAG, "  data.getData=" + data.getData());
+            mImageView.setImageURI(data.getData());
+            mImageView.setVisibility(View.VISIBLE);
         }
     }
 
