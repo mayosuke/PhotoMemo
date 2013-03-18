@@ -33,9 +33,24 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.d(TAG, "onActivityForResult:requestCode=" + requestCode + ",resultCode=" + ",data=" + data);
+        final ActivityResult result = ActivityResult.parseInt(resultCode);
+        Log.d(TAG, "onActivityForResult:requestCode=" + requestCode + ",result=" + result + ",data=" + data);
         if (data != null) {
             Log.d(TAG, "  data.getData=" + data.getData());
+        }
+    }
+
+    private enum ActivityResult {
+        OK, CANCELED;
+
+        private static ActivityResult parseInt(int resultCode) {
+            if (resultCode == Activity.RESULT_OK) {
+                return OK;
+            }
+            if (resultCode == Activity.RESULT_CANCELED) {
+                return CANCELED;
+            }
+            throw new IllegalArgumentException();
         }
     }
 }
