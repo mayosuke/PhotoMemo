@@ -13,6 +13,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -33,6 +34,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         Log.d(TAG, "onActivityForResult:requestCode=" + requestCode + ",resultCode=" + ",data=" + data);
-        Log.d(TAG, "  data.getData=" + data.getData());
+        if (data != null) {
+            Log.d(TAG, "  data.getData=" + data.getData());
+        }
     }
 }
