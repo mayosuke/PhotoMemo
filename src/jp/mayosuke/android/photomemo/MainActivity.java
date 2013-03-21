@@ -2,6 +2,8 @@ package jp.mayosuke.android.photomemo;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -46,7 +48,7 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         final ActivityResult result = ActivityResult.parseInt(resultCode);
         Log.d(TAG, "onActivityForResult:requestCode=" + requestCode + ",result=" + result + ",data=" + data);
-        if (data == null) {
+        if (resultCode == RESULT_CANCELED || data == null) {
             return;
         }
         final Bundle extras = data.getExtras();
@@ -55,9 +57,19 @@ public class MainActivity extends Activity {
                 Log.d(TAG, "  data.getExtras[" + key + "]=" + extras.get(key));
             }
         }
-        Log.d(TAG, "  data.getData=" + data.getData());
-        mImageView.setImageURI(data.getData());
-        mImageView.setVisibility(View.VISIBLE);
+        final Bitmap bitmap = data.getParcelableExtra("data");
+        if (bitmap != null) {
+            mImageView.setImageBitmap(bitmap);
+            mImageView.setVisibility(View.VISIBLE);
+            return;
+        }
+        final Uri uri = data.getData();
+        Log.d(TAG, "  data.getData=" + uri);
+        if (uri != null) {
+            mImageView.setImageURI(data.getData());
+            mImageView.setVisibility(View.VISIBLE);
+            return;
+        }
     }
 
     private enum ActivityResult {
