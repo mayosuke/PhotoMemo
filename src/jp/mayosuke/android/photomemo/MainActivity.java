@@ -46,11 +46,18 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         final ActivityResult result = ActivityResult.parseInt(resultCode);
         Log.d(TAG, "onActivityForResult:requestCode=" + requestCode + ",result=" + result + ",data=" + data);
-        if (data != null) {
-            Log.d(TAG, "  data.getData=" + data.getData());
-            mImageView.setImageURI(data.getData());
-            mImageView.setVisibility(View.VISIBLE);
+        if (data == null) {
+            return;
         }
+        final Bundle extras = data.getExtras();
+        if (extras != null) {
+            for (String key : extras.keySet()) {
+                Log.d(TAG, "  data.getExtras[" + key + "]=" + extras.get(key));
+            }
+        }
+        Log.d(TAG, "  data.getData=" + data.getData());
+        mImageView.setImageURI(data.getData());
+        mImageView.setVisibility(View.VISIBLE);
     }
 
     private enum ActivityResult {
