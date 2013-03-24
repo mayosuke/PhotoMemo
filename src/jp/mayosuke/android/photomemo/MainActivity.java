@@ -8,6 +8,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
@@ -15,6 +16,10 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageView;
+
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 
 public class MainActivity extends Activity {
@@ -39,6 +44,9 @@ public class MainActivity extends Activity {
 
         // create Intent to take a picture and return control to the calling application
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        Uri outputUri = getOutputMediaFileUri();
+        Log.d(TAG, "  outputUri=" + outputUri);
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, outputUri);
 
         // start the image capture Intent
         startActivityForResult(intent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE);
@@ -84,19 +92,11 @@ public class MainActivity extends Activity {
                 Log.d(TAG, "  data.getExtras[" + key + "]=" + extras.get(key));
             }
         }
-        mBitmap = data.getParcelableExtra("data");
+
         final Uri uri = data.getData();
         Log.d(TAG, "  data.getData=" + uri);
-        if (mBitmap != null) {
-//            getActionBar().hide();
-            setRequestedOrientation(getOrientation(mBitmap));
-            mImageView.setImageBitmap(mBitmap);
-            mImageView.setVisibility(View.VISIBLE);
-            return;
-        }
         if (uri != null) {
             mBitmap = getBitmap(uri);
-//            getActionBar().hide();
             setRequestedOrientation(getOrientation(mBitmap));
             mImageView.setImageBitmap(mBitmap);
             mImageView.setVisibility(View.VISIBLE);
@@ -142,5 +142,35 @@ public class MainActivity extends Activity {
 
     private Bitmap getBitmap(final Uri uri) {
         return BitmapFactory.decodeFile(getImageFilePathFromUri(uri));
+    }
+
+    private static Uri getOutputMediaFileUri(){
+        Log.e(TAG, "getOutputMediaFileUri");
+
+        // To be safe, you should check that the SDCard is mounted
+        // using Environment.getExternalStorageState() before doing this.
+
+        File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_PICTURES), "photomemo");
+        // This location works best if you want the created images to be shared
+        // between applications and persist after your app has been uninstalled.
+        Log.d(TAG, "  mediaStorageDir=" + mediaStorageDir.getAbsolutePath());
+
+        // Create the storage directory if it does not exist
+        if (! mediaStorageDir.exists()){
+            if (! mediaStorageDir.mkdirs()){
+                Log.e(TAG, "  failed to create directory");
+                return null;
+            }
+        }
+
+        // Create a media file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        File mediaFile = new File(mediaStorageDir.getPath() + File.separator + "IMG_"+ timeStamp + ".jpg");
+
+        Uri mediaFileUri = Uri.fromFile(mediaFile);
+        Log.d(TAG, "  mediaFile=" + mediaFile + ",mediaFileUri=" + mediaFileUri);
+
+        return mediaFileUri;
     }
 }
