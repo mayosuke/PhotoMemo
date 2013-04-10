@@ -6,6 +6,7 @@ import android.content.pm.ActivityInfo;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -13,8 +14,6 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
 import android.widget.ImageView;
 
 import java.io.File;
@@ -24,32 +23,70 @@ import java.util.Date;
 
 public class MainActivity extends Activity {
     private static final int CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE = 100;
-    private static final String TAG = "PhotoMemo";
+    private static final String TAG = "PhotoMemo.MainActivity";
+    private static final String KEY_OUTPUT_URI = "outputUri";
 
-    private ImageView mImageView;
-    private Bitmap mBitmap;
+    private ImageView mImageView = null;
+    private Bitmap mBitmap = null;
+    private Uri mOutputUri = null;
+
+    private enum AppState {
+        IDLE,
+        TAKING_PICTURE,
+        VIEWING_PICTURE
+    }
+    private static AppState sState;
+
+    static {
+        changeState(AppState.IDLE);
+    }
+
+    public MainActivity() {
+        Log.d(TAG, "new");
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d(TAG, "onCreate");
+        Log.d(TAG, "onCreate:savedInstanceState=" + savedInstanceState + ",sState=" + sState);
         super.onCreate(savedInstanceState);
-
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         setContentView(R.layout.activity_main);
 
         mImageView = (ImageView) findViewById(R.id.image);
-        mImageView.setVisibility(View.VISIBLE);
+        mImageView.setVisibility(View.INVISIBLE);
 
-        // create Intent to take a picture and return control to the calling application
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        Uri outputUri = getOutputMediaFileUri();
-        Log.d(TAG, "  outputUri=" + outputUri);
-        intent.putExtra(MediaStore.EXTRA_OUTPUT, outputUri);
-
-        // start the image capture Intent
-        startActivityForResult(intent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE);
+        switch (sState) {
+        case IDLE:
+            changeState(AppState.TAKING_PICTURE);
+            // create Intent to take a picture and return control to the calling application
+            Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            mOutputUri = getOutputMediaFileUri();
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, mOutputUri);
+            startActivityForResult(intent, CAPTURE_IMAGE_ACTIVITY_REQUEST_CODE);
+            break;
+        case TAKING_PICTURE:
+            if (savedInstanceState != null) {
+                mOutputUri = savedInstanceState.getParcelable(KEY_OUTPUT_URI);
+            } else {
+                mOutputUri = null;
+            }
+            break;
+        case VIEWING_PICTURE:
+            if (savedInstanceState != null) {
+                mOutputUri = savedInstanceState.getParcelable(KEY_OUTPUT_URI);
+            } else {
+                mOutputUri = null;
+            }
+            if (mOutputUri != null) {
+                mBitmap = BitmapFactory.decodeFile(mOutputUri.getPath());
+                setRequestedOrientation(getOrientation(mBitmap));
+                mImageView.setImageBitmap(mBitmap);
+            } else {
+                mImageView.setBackgroundColor(Color.WHITE);
+            }
+            mImageView.setVisibility(View.VISIBLE);
+            break;
+        }
     }
 
     @Override
@@ -59,8 +96,15 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        Log.d(TAG, "onPause");
+        super.onPause();
+    }
+
+    @Override
     protected void onDestroy() {
-        Log.d(TAG, "onDestroy");
+        final int changingConfig = getChangingConfigurations();
+        Log.d(TAG, "onDestroy:changingConfig=" + changingConfig);
         if (mImageView != null) {
             mImageView.setImageBitmap(null);
             mImageView = null;
@@ -81,33 +125,47 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        final ActivityResult result = ActivityResult.parseInt(resultCode);
+        final ActivityResult result = ActivityResult.parseResultCode(resultCode);
         Log.d(TAG, "onActivityForResult:requestCode=" + requestCode + ",result=" + result + ",data=" + data);
-        if (resultCode == RESULT_CANCELED || data == null) {
-            return;
-        }
-        final Bundle extras = data.getExtras();
-        if (extras != null) {
-            for (String key : extras.keySet()) {
-                Log.d(TAG, "  data.getExtras[" + key + "]=" + extras.get(key));
+        if (sState == AppState.TAKING_PICTURE) {
+            changeState(AppState.VIEWING_PICTURE);
+            if (result.isOk()) {
+                mBitmap = BitmapFactory.decodeFile(mOutputUri.getPath());
+                setRequestedOrientation(getOrientation(mBitmap));
+                mImageView.setImageBitmap(mBitmap);
+            } else {
+                mOutputUri = null;
+                mImageView.setBackgroundColor(Color.WHITE);
             }
-        }
-
-        final Uri uri = data.getData();
-        Log.d(TAG, "  data.getData=" + uri);
-        if (uri != null) {
-            mBitmap = getBitmap(uri);
-            setRequestedOrientation(getOrientation(mBitmap));
-            mImageView.setImageBitmap(mBitmap);
             mImageView.setVisibility(View.VISIBLE);
-            return;
         }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (mOutputUri != null) {
+            outState.putParcelable(KEY_OUTPUT_URI, mOutputUri);
+        }
+        Log.d(TAG, "onSaveInstanceState:outState=" + outState);
+    }
+
+    @Override
+    public void onBackPressed() {
+        Log.d(TAG, "onBackPressed");
+        changeState(AppState.IDLE);
+        super.onBackPressed();
+    }
+
+    private static void changeState(AppState newState) {
+        Log.d(TAG, "changeState:oldState=" + sState + ",newState=" + newState);
+        sState = newState;
     }
 
     private enum ActivityResult {
         OK, CANCELED;
 
-        private static ActivityResult parseInt(int resultCode) {
+        private static ActivityResult parseResultCode(int resultCode) {
             if (resultCode == Activity.RESULT_OK) {
                 return OK;
             }
@@ -115,6 +173,10 @@ public class MainActivity extends Activity {
                 return CANCELED;
             }
             throw new IllegalArgumentException();
+        }
+
+        private boolean isOk() {
+            return this == OK;
         }
     }
 
